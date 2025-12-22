@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>90s Disco Dance Floor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            min-height: 100vh;
+            overflow: hidden;
+            perspective: 800px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .disco-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            position: relative;
+        }
+
+        .floor {
+            width: 200%;
+            height: 80vh;
+            display: grid;
+            grid-template-columns: repeat(32, 1fr);
+            grid-template-rows: repeat(16, 1fr);
+            gap: 4px;
+            transform: rotateX(65deg) translateY(20%);
+            transform-style: preserve-3d;
+            position: relative;
+        }
+
+        .tile {
+            background: #111;
+            border-radius: 2px;
+            position: relative;
+            transition: background 0.1s ease;
+        }
+
+        .tile::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 2px;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+
+        .tile.lit {
+            animation: glow var(--duration, 0.5s) ease-in-out;
+        }
+
+        .tile.lit::before {
+            opacity: 1;
+            box-shadow: 
+                0 0 15px var(--color),
+                0 0 30px var(--color),
+                0 0 45px var(--color);
+        }
+
+        @keyframes glow {
+            0%, 100% {
+                background: #111;
+            }
+            20%, 80% {
+                background: var(--color);
+            }
+        }
+
+        /* Disco ball */
+        .disco-ball {
+            position: absolute;
+            top: 5%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: 
+                radial-gradient(circle at 30% 30%, #fff, #888 40%, #333 100%);
+            box-shadow: 
+                0 0 60px rgba(255, 255, 255, 0.5),
+                inset 0 0 30px rgba(0,0,0,0.5);
+            animation: rotate 4s linear infinite;
+            z-index: 100;
+        }
+
+        .disco-ball::before {
+            content: '';
+            position: absolute;
+            inset: 5px;
+            border-radius: 50%;
+            background: 
+                repeating-conic-gradient(
+                    from 0deg,
+                    #fff 0deg 5deg,
+                    #ccc 5deg 10deg,
+                    #999 10deg 15deg,
+                    #ddd 15deg 20deg
+                );
+            opacity: 0.8;
+        }
+
+        @keyframes rotate {
+            from { transform: translateX(-50%) rotateY(0deg); }
+            to { transform: translateX(-50%) rotateY(360deg); }
+        }
+
+        /* Light beams from disco ball */
+        .beams {
+            position: absolute;
+            top: 5%;
+            left: 50%;
+            width: 400px;
+            height: 400px;
+            transform: translateX(-50%);
+            pointer-events: none;
+        }
+
+        .beam {
+            position: absolute;
+            width: 4px;
+            height: 300px;
+            top: 40px;
+            left: 50%;
+            transform-origin: top center;
+            opacity: 0.3;
+            animation: beam-sweep 3s ease-in-out infinite;
+        }
+
+        .beam:nth-child(1) { 
+            background: linear-gradient(to bottom, #ff0080, transparent);
+            animation-delay: 0s;
+            transform: rotate(-60deg);
+        }
+        .beam:nth-child(2) { 
+            background: linear-gradient(to bottom, #00ff80, transparent);
+            animation-delay: 0.5s;
+            transform: rotate(-30deg);
+        }
+        .beam:nth-child(3) { 
+            background: linear-gradient(to bottom, #0080ff, transparent);
+            animation-delay: 1s;
+            transform: rotate(0deg);
+        }
+        .beam:nth-child(4) { 
+            background: linear-gradient(to bottom, #ffff00, transparent);
+            animation-delay: 1.5s;
+            transform: rotate(30deg);
+        }
+        .beam:nth-child(5) { 
+            background: linear-gradient(to bottom, #ff00ff, transparent);
+            animation-delay: 2s;
+            transform: rotate(60deg);
+        }
+
+        @keyframes beam-sweep {
+            0%, 100% { opacity: 0.1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Fog/haze effect */
+        .fog {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 40%;
+            background: linear-gradient(
+                to top,
+                rgba(100, 50, 150, 0.15),
+                transparent
+            );
+            pointer-events: none;
+            animation: fog-pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes fog-pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 0.8; }
+        }
+
+        /* Strobe effect overlay */
+        .strobe {
+            position: fixed;
+            inset: 0;
+            background: #fff;
+            opacity: 0;
+            pointer-events: none;
+            animation: strobe 8s linear infinite;
+        }
+
+        @keyframes strobe {
+            0%, 100% { opacity: 0; }
+            49.5% { opacity: 0; }
+            50% { opacity: 0.1; }
+            50.5% { opacity: 0; }
+        }
+
+        /* Title */
+        .title {
+            position: absolute;
+            top: 15%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'Arial Black', sans-serif;
+            font-size: clamp(24px, 5vw, 48px);
+            color: #fff;
+            text-shadow: 
+                0 0 10px #ff00ff,
+                0 0 20px #ff00ff,
+                0 0 40px #ff00ff,
+                0 0 80px #ff00ff;
+            letter-spacing: 0.2em;
+            animation: title-glow 2s ease-in-out infinite alternate;
+            z-index: 50;
+        }
+
+        @keyframes title-glow {
+            from {
+                text-shadow: 
+                    0 0 10px #ff00ff,
+                    0 0 20px #ff00ff,
+                    0 0 40px #ff00ff;
+            }
+            to {
+                text-shadow: 
+                    0 0 20px #00ffff,
+                    0 0 40px #00ffff,
+                    0 0 80px #00ffff;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="disco-container">
+        <div class="disco-ball"></div>
+        <div class="beams">
+            <div class="beam"></div>
+            <div class="beam"></div>
+            <div class="beam"></div>
+            <div class="beam"></div>
+            <div class="beam"></div>
+        </div>
+        <div class="title">DISCO FEVER</div>
+        <div class="floor" id="floor"></div>
+        <div class="fog"></div>
+        <div class="strobe"></div>
+    </div>
+
+    <script>
+        const colors = [
+            '#ff0080', // hot pink
+            '#00ff80', // neon green
+            '#0080ff', // electric blue
+            '#ff8000', // orange
+            '#ff00ff', // magenta
+            '#00ffff', // cyan
+            '#ffff00', // yellow
+            '#80ff00', // lime
+            '#ff0040', // red-pink
+            '#8000ff', // purple
+            '#00ff40', // green
+            '#ff4000', // red-orange
+        ];
+
+        const floor = document.getElementById('floor');
+        const tiles = [];
+        const gridCols = 32;
+        const gridRows = 16;
+
+        // Create tiles
+        for (let i = 0; i < gridCols * gridRows; i++) {
+            const tile = document.createElement('div');
+            tile.className = 'tile';
+            floor.appendChild(tile);
+            tiles.push(tile);
+        }
+
+        // Different blinking patterns
+        function randomBlink() {
+            const numTiles = Math.floor(Math.random() * 30) + 20;
+            for (let i = 0; i < numTiles; i++) {
+                const randomIndex = Math.floor(Math.random() * tiles.length);
+                const tile = tiles[randomIndex];
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                const duration = 0.3 + Math.random() * 0.4;
+                
+                tile.style.setProperty('--color', color);
+                tile.style.setProperty('--duration', duration + 's');
+                tile.classList.add('lit');
+                
+                setTimeout(() => {
+                    tile.classList.remove('lit');
+                }, duration * 1000);
+            }
+        }
+
+        // Wave pattern
+        function waveBlink() {
+            const startCol = Math.floor(Math.random() * gridCols);
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            
+            for (let row = 0; row < gridRows; row++) {
+                setTimeout(() => {
+                    for (let col = -2; col <= 2; col++) {
+                        const actualCol = (startCol + col + gridCols) % gridCols;
+                        const index = row * gridCols + actualCol;
+                        const tile = tiles[index];
+                        
+                        if (tile) {
+                            tile.style.setProperty('--color', color);
+                            tile.style.setProperty('--duration', '0.3s');
+                            tile.classList.add('lit');
+                            
+                            setTimeout(() => {
+                                tile.classList.remove('lit');
+                            }, 300);
+                        }
+                    }
+                }, row * 50);
+            }
+        }
+
+        // Radial burst
+        function radialBurst() {
+            const centerX = Math.floor(Math.random() * gridCols);
+            const centerY = Math.floor(Math.random() * gridRows);
+            const maxRadius = 8;
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            
+            for (let r = 0; r <= maxRadius; r++) {
+                setTimeout(() => {
+                    for (let row = 0; row < gridRows; row++) {
+                        for (let col = 0; col < gridCols; col++) {
+                            const dist = Math.sqrt(
+                                Math.pow(col - centerX, 2) + 
+                                Math.pow(row - centerY, 2)
+                            );
+                            
+                            if (Math.abs(dist - r) < 1) {
+                                const index = row * gridCols + col;
+                                const tile = tiles[index];
+                                
+                                tile.style.setProperty('--color', color);
+                                tile.style.setProperty('--duration', '0.4s');
+                                tile.classList.add('lit');
+                                
+                                setTimeout(() => {
+                                    tile.classList.remove('lit');
+                                }, 400);
+                            }
+                        }
+                    }
+                }, r * 80);
+            }
+        }
+
+        // Checkerboard flash
+        function checkerboardFlash() {
+            const color1 = colors[Math.floor(Math.random() * colors.length)];
+            const color2 = colors[Math.floor(Math.random() * colors.length)];
+            
+            tiles.forEach((tile, i) => {
+                const row = Math.floor(i / gridCols);
+                const col = i % gridCols;
+                const isEven = (row + col) % 2 === 0;
+                
+                setTimeout(() => {
+                    tile.style.setProperty('--color', isEven ? color1 : color2);
+                    tile.style.setProperty('--duration', '0.5s');
+                    tile.classList.add('lit');
+                    
+                    setTimeout(() => {
+                        tile.classList.remove('lit');
+                    }, 500);
+                }, isEven ? 0 : 250);
+            });
+        }
+
+        // Line sweep
+        function lineSweep() {
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            const horizontal = Math.random() > 0.5;
+            
+            const max = horizontal ? gridRows : gridCols;
+            
+            for (let i = 0; i < max; i++) {
+                setTimeout(() => {
+                    for (let j = 0; j < (horizontal ? gridCols : gridRows); j++) {
+                        const index = horizontal ? 
+                            i * gridCols + j : 
+                            j * gridCols + i;
+                        const tile = tiles[index];
+                        
+                        tile.style.setProperty('--color', color);
+                        tile.style.setProperty('--duration', '0.3s');
+                        tile.classList.add('lit');
+                        
+                        setTimeout(() => {
+                            tile.classList.remove('lit');
+                        }, 300);
+                    }
+                }, i * 60);
+            }
+        }
+
+        // Pattern sequence
+        const patterns = [randomBlink, waveBlink, radialBurst, checkerboardFlash, lineSweep];
+        let patternIndex = 0;
+
+        function runPattern() {
+            // Always run random blinks
+            randomBlink();
+            
+            // Every 3rd call, run a special pattern
+            if (patternIndex % 3 === 0) {
+                const specialPattern = patterns[1 + Math.floor(Math.random() * (patterns.length - 1))];
+                specialPattern();
+            }
+            
+            patternIndex++;
+        }
+
+        // Run patterns at varying intervals
+        setInterval(runPattern, 150);
+        setInterval(randomBlink, 80);
+    </script>
+</body>
+</html>
