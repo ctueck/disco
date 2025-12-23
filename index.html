@@ -40,30 +40,17 @@
             transform: rotateX(65deg) translateY(20%);
             transform-style: preserve-3d;
             position: relative;
+            will-change: transform;
         }
 
         .tile {
             background: #111;
             border-radius: 2px;
             position: relative;
-            transition: background 0.1s ease;
-        }
-
-        .tile::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            border-radius: 2px;
-            opacity: 0;
-            transition: opacity 0.15s ease;
         }
 
         .tile.lit {
-            animation: glow var(--duration, 0.5s) ease-in-out;
-        }
-
-        .tile.lit::before {
-            opacity: 1;
+            animation: glow var(--duration, 0.5s) ease-in-out forwards;
             box-shadow: 
                 0 0 15px var(--color),
                 0 0 30px var(--color),
@@ -73,9 +60,14 @@
         @keyframes glow {
             0%, 100% {
                 background: #111;
+                box-shadow: none;
             }
             20%, 80% {
                 background: var(--color);
+                box-shadow: 
+                    0 0 15px var(--color),
+                    0 0 30px var(--color),
+                    0 0 45px var(--color);
             }
         }
 
@@ -90,11 +82,10 @@
             border-radius: 50%;
             background: 
                 radial-gradient(circle at 30% 30%, #fff, #888 40%, #333 100%);
-            box-shadow: 
-                0 0 60px rgba(255, 255, 255, 0.5),
-                inset 0 0 30px rgba(0,0,0,0.5);
+            box-shadow: 0 0 60px rgba(255, 255, 255, 0.5);
             animation: rotate 4s linear infinite;
             z-index: 100;
+            will-change: transform;
         }
 
         .disco-ball::before {
@@ -138,6 +129,7 @@
             transform-origin: top center;
             opacity: 0.3;
             animation: beam-sweep 3s ease-in-out infinite;
+            will-change: opacity;
         }
 
         .beam:nth-child(1) { 
@@ -185,6 +177,7 @@
             );
             pointer-events: none;
             animation: fog-pulse 4s ease-in-out infinite;
+            will-change: opacity;
         }
 
         @keyframes fog-pulse {
@@ -221,8 +214,7 @@
             text-shadow: 
                 0 0 10px #ff00ff,
                 0 0 20px #ff00ff,
-                0 0 40px #ff00ff,
-                0 0 80px #ff00ff;
+                0 0 40px #ff00ff;
             letter-spacing: 0.2em;
             animation: title-glow 2s ease-in-out infinite alternate;
             z-index: 50;
@@ -262,49 +254,83 @@
 
     <script>
         const colors = [
-            '#ff0080', // hot pink
-            '#00ff80', // neon green
-            '#0080ff', // electric blue
-            '#ff8000', // orange
-            '#ff00ff', // magenta
-            '#00ffff', // cyan
-            '#ffff00', // yellow
-            '#80ff00', // lime
-            '#ff0040', // red-pink
-            '#8000ff', // purple
-            '#00ff40', // green
-            '#ff4000', // red-orange
+            '#ff0080', '#00ff80', '#0080ff', '#ff8000',
+            '#ff00ff', '#00ffff', '#ffff00', '#80ff00',
+            '#ff0040', '#8000ff', '#00ff40', '#ff4000'
         ];
 
         const floor = document.getElementById('floor');
         const tiles = [];
         const gridCols = 32;
         const gridRows = 16;
+        const totalTiles = gridCols * gridRows;
+
+        // Track lit tiles to manage cleanup efficiently
+        const litTiles = new Map();
 
         // Create tiles
-        for (let i = 0; i < gridCols * gridRows; i++) {
+        for (let i = 0; i < totalTiles; i++) {
             const tile = document.createElement('div');
             tile.className = 'tile';
             floor.appendChild(tile);
             tiles.push(tile);
         }
 
-        // Different blinking patterns
+        // Pre-calculate radial burst patterns for common radii
+        const radialCache = new Map();
+        function getRadialTiles(centerX, centerY, radius) {
+            const key = `${centerX},${centerY},${radius}`;
+            if (radialCache.has(key)) return radialCache.get(key);
+            
+            const result = [];
+            for (let row = 0; row < gridRows; row++) {
+                for (let col = 0; col < gridCols; col++) {
+                    const dist = Math.sqrt((col - centerX) ** 2 + (row - centerY) ** 2);
+                    if (Math.abs(dist - radius) < 1) {
+                        result.push(row * gridCols + col);
+                    }
+                }
+            }
+            
+            // Limit cache size
+            if (radialCache.size > 100) {
+                const firstKey = radialCache.keys().next().value;
+                radialCache.delete(firstKey);
+            }
+            radialCache.set(key, result);
+            return result;
+        }
+
+        // Efficient tile lighting
+        function lightTile(index, color, duration) {
+            const tile = tiles[index];
+            if (!tile) return;
+            
+            // Clear existing timeout if tile is already lit
+            if (litTiles.has(index)) {
+                clearTimeout(litTiles.get(index));
+            }
+            
+            tile.style.setProperty('--color', color);
+            tile.style.setProperty('--duration', duration + 's');
+            tile.classList.add('lit');
+            
+            const timeoutId = setTimeout(() => {
+                tile.classList.remove('lit');
+                litTiles.delete(index);
+            }, duration * 1000);
+            
+            litTiles.set(index, timeoutId);
+        }
+
+        // Random blink - reduced to 10-20 tiles, slower pace
         function randomBlink() {
-            const numTiles = Math.floor(Math.random() * 10) + 10;
+            const numTiles = Math.floor(Math.random() * 16) + 15; // 15-30 tiles
             for (let i = 0; i < numTiles; i++) {
-                const randomIndex = Math.floor(Math.random() * tiles.length);
-                const tile = tiles[randomIndex];
+                const randomIndex = Math.floor(Math.random() * totalTiles);
                 const color = colors[Math.floor(Math.random() * colors.length)];
-                const duration = 0.8 + Math.random() * 0.6;
-                
-                tile.style.setProperty('--color', color);
-                tile.style.setProperty('--duration', duration + 's');
-                tile.classList.add('lit');
-                
-                setTimeout(() => {
-                    tile.classList.remove('lit');
-                }, duration * 1000);
+                const duration = 0.4 + Math.random() * 0.4; // 0.4-0.8s
+                lightTile(randomIndex, color, duration);
             }
         }
 
@@ -318,23 +344,13 @@
                     for (let col = -2; col <= 2; col++) {
                         const actualCol = (startCol + col + gridCols) % gridCols;
                         const index = row * gridCols + actualCol;
-                        const tile = tiles[index];
-                        
-                        if (tile) {
-                            tile.style.setProperty('--color', color);
-                            tile.style.setProperty('--duration', '0.3s');
-                            tile.classList.add('lit');
-                            
-                            setTimeout(() => {
-                                tile.classList.remove('lit');
-                            }, 300);
-                        }
+                        lightTile(index, color, 0.3);
                     }
                 }, row * 50);
             }
         }
 
-        // Radial burst
+        // Radial burst - optimized with caching
         function radialBurst() {
             const centerX = Math.floor(Math.random() * gridCols);
             const centerY = Math.floor(Math.random() * gridRows);
@@ -343,100 +359,54 @@
             
             for (let r = 0; r <= maxRadius; r++) {
                 setTimeout(() => {
-                    for (let row = 0; row < gridRows; row++) {
-                        for (let col = 0; col < gridCols; col++) {
-                            const dist = Math.sqrt(
-                                Math.pow(col - centerX, 2) + 
-                                Math.pow(row - centerY, 2)
-                            );
-                            
-                            if (Math.abs(dist - r) < 1) {
-                                const index = row * gridCols + col;
-                                const tile = tiles[index];
-                                
-                                tile.style.setProperty('--color', color);
-                                tile.style.setProperty('--duration', '0.4s');
-                                tile.classList.add('lit');
-                                
-                                setTimeout(() => {
-                                    tile.classList.remove('lit');
-                                }, 400);
-                            }
-                        }
-                    }
+                    const tileIndices = getRadialTiles(centerX, centerY, r);
+                    tileIndices.forEach(index => lightTile(index, color, 0.4));
                 }, r * 80);
             }
-        }
-
-        // Checkerboard flash
-        function checkerboardFlash() {
-            const color1 = colors[Math.floor(Math.random() * colors.length)];
-            const color2 = colors[Math.floor(Math.random() * colors.length)];
-            
-            tiles.forEach((tile, i) => {
-                const row = Math.floor(i / gridCols);
-                const col = i % gridCols;
-                const isEven = (row + col) % 2 === 0;
-                
-                setTimeout(() => {
-                    tile.style.setProperty('--color', isEven ? color1 : color2);
-                    tile.style.setProperty('--duration', '0.5s');
-                    tile.classList.add('lit');
-                    
-                    setTimeout(() => {
-                        tile.classList.remove('lit');
-                    }, 500);
-                }, isEven ? 0 : 250);
-            });
         }
 
         // Line sweep
         function lineSweep() {
             const color = colors[Math.floor(Math.random() * colors.length)];
             const horizontal = Math.random() > 0.5;
-            
             const max = horizontal ? gridRows : gridCols;
             
             for (let i = 0; i < max; i++) {
                 setTimeout(() => {
-                    for (let j = 0; j < (horizontal ? gridCols : gridRows); j++) {
-                        const index = horizontal ? 
-                            i * gridCols + j : 
-                            j * gridCols + i;
-                        const tile = tiles[index];
-                        
-                        tile.style.setProperty('--color', color);
-                        tile.style.setProperty('--duration', '0.3s');
-                        tile.classList.add('lit');
-                        
-                        setTimeout(() => {
-                            tile.classList.remove('lit');
-                        }, 300);
+                    const count = horizontal ? gridCols : gridRows;
+                    for (let j = 0; j < count; j++) {
+                        const index = horizontal ? i * gridCols + j : j * gridCols + i;
+                        lightTile(index, color, 0.3);
                     }
                 }, i * 60);
             }
         }
 
-        // Pattern sequence
-        const patterns = [randomBlink, waveBlink, radialBurst, lineSweep];
-        let patternIndex = 0;
+        // Pattern management
+        const specialPatterns = [waveBlink, radialBurst, lineSweep];
+        let lastTime = 0;
+        let patternCounter = 0;
+        const randomBlinkInterval = 180; // Every 180ms
+        const specialPatternInterval = 3; // Run special pattern every 3rd cycle
 
-        function runPattern() {
-            // Always run random blinks
-            randomBlink();
-            
-            // Every 3rd call, run a special pattern
-            if (patternIndex % 3 === 0) {
-                const specialPattern = patterns[1 + Math.floor(Math.random() * (patterns.length - 1))];
-                specialPattern();
+        function animate(currentTime) {
+            if (currentTime - lastTime >= randomBlinkInterval) {
+                randomBlink();
+                
+                if (patternCounter % specialPatternInterval === 0) {
+                    const pattern = specialPatterns[Math.floor(Math.random() * specialPatterns.length)];
+                    pattern();
+                }
+                
+                patternCounter++;
+                lastTime = currentTime;
             }
             
-            patternIndex++;
+            requestAnimationFrame(animate);
         }
 
-        // Run patterns at varying intervals
-        setInterval(runPattern, 150);
-        setInterval(randomBlink, 80);
+        // Start animation loop
+        requestAnimationFrame(animate);
     </script>
 </body>
 </html>
